@@ -1,0 +1,69 @@
+
+
+<html>
+    <head>
+      <link rel="stylesheet" href="https://pyscript.net/alpha/pyscript.css" />
+      <link rel = 'stylesheet' href = "https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css">
+      <link rel="stylesheet" href="style.css">
+      <script defer src="https://pyscript.net/alpha/pyscript.js"></script>
+      <py-env>
+        - pandas
+      </py-env>
+    </head>
+    <script defer src="script.js">     </script>
+    <body>
+        <form id="upload" action="upload.php" method="POST" enctype="multipart/form-data">
+            <fieldset>
+            <input type="hidden" id="MAX_FILE_SIZE" name="MAX_FILE_SIZE" value="300000" />
+            <div>
+                <label for="fileselect">Upload file:</label>
+                <input type="file" id="fileselect" name="fileselect[]" />
+                <div id="filedrag" >Или перетащите файл сюда</div>
+            </div>
+            
+            <button type="button" id="button" class="btn">Convert</button>
+            <label for="checkbox-1" class="chkbox">
+                <input type="checkbox" name="check" id="check">
+                W/o header
+            </label>
+            </fieldset>
+        </form>
+        <textarea id="output_div"></textarea>
+        <footer>
+            <p class="foo"> Developed by Alan Babitski </p>
+        </footer>
+        <py-script>
+            from js import document 
+            from pyodide import create_proxy
+            import csv
+            from io import BytesIO
+            import pandas as pd
+
+            async def runPython(*args, **kwargs):
+                output = Element("output_div")
+                output.element.innerText = ""
+                csv_file = document.getElementById('fileselect').files.item(0)
+                array_buf = await csv_file.arrayBuffer() # Get arrayBuffer from file
+                file_bytes = array_buf.to_bytes() # convert to raw bytes array 
+                csv_file = BytesIO(file_bytes) # Wrap in Python BytesIO file-like object
+                df = pd.read_csv(csv_file, sep=',', header=None, index_col=False)
+                df = df.fillna('')
+                header = '||'
+                st = 0
+                if (document.getElementById('check').checked == False):
+                    for el in df.iloc[0].values.tolist():
+                        header += '|:' + str(el)
+                    output.element.append(header, '\n')
+                    st = 1
+                for i in range(st, len(df)):
+                    row = '|'
+                    for el in df.iloc[i].values.tolist():
+                        row += '|' + str(el)
+                    output.element.append(row, '\n')
+            function_proxy = create_proxy(runPython)
+
+            document.getElementById("button").addEventListener("click", function_proxy)
+        </py-script>
+
+        </body>
+</html>
